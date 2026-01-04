@@ -1,5 +1,6 @@
 import Entity from "../models/Entity.js";
 import User from "../models/User.js";
+import UserSession from "../models/UserSession.js";
 
 // POST /api/entities
 export const createEntity = async (req, res, next) => {
