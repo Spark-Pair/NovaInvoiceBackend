@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes.js';
 import entityRoutes from './routes/entityRoutes.js';
 import buyerRoutes from './routes/buyerRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/entities', entityRoutes);
 app.use('/api/buyers', buyerRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // Error handling middleware (optional)
 app.use((err, req, res, next) => {
