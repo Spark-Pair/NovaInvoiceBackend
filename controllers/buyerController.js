@@ -1,46 +1,6 @@
 import Buyer from "../models/Buyer.js";
 import Entity from "../models/Entity.js";
 
-// export const createBuyer = async (req, res, next) => {
-//   try {
-//     const {
-//       buyerName,
-//       registrationType,
-//       province,
-//       ntn,
-//       cnic,
-//       strn,
-//       fullAddress,
-//       relatedEntity,
-//     } = req.body;
-
-//     // Ensure parent entity exists
-//     const entity = await Entity.findById(relatedEntity);
-//     if (!entity) {
-//       return res.status(404).json({ message: "Related entity not found" });
-//     }
-
-//     const buyer = await Buyer.create({
-//       buyerName,
-//       registrationType,
-//       province,
-//       ntn,
-//       cnic,
-//       strn,
-//       fullAddress,
-//       isActive: true,
-//       relatedEntity,
-//     });
-
-//     res.status(201).json({
-//       message: "Buyer created successfully",
-//       buyer,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
 export const createBuyer = async (req, res, next) => {
   try {
     const {
@@ -81,87 +41,6 @@ export const createBuyer = async (req, res, next) => {
     next(err);
   }
 };
-
-// export const getBuyers = async (req, res, next) => {
-//   try {
-//     const page = Math.max(1, parseInt(req.query.page) || 1);
-//     const limit = Math.min(100, parseInt(req.query.limit) || 50);
-//     const skip = (page - 1) * limit;
-
-//     const {
-//       buyerName,
-//       registrationType,
-//       province,
-//       ntn,
-//       cnic,
-//       strn,
-//       fullAddress,
-//       dateFrom,
-//       dateTo,
-//       relatedEntity,
-//     } = req.query;
-
-//     /** -------------------------------
-//      * Build Query
-//      * ------------------------------- */
-//     const query = {};
-
-//     if (relatedEntity) {
-//       query.relatedEntity = relatedEntity;
-//     }
-
-//     if (buyerName) {
-//       query.buyerName = { $regex: buyerName, $options: "i" };
-//     }
-
-//     if (registrationType && registrationType !== "Select...") {
-//       query.registrationType = registrationType;
-//     }
-
-//     if (province && province !== "Select...") {
-//       query.province = province;
-//     }
-
-//     if (ntn) query.ntn = ntn;
-//     if (cnic) query.cnic = cnic;
-//     if (strn) query.strn = strn;
-
-//     if (fullAddress) {
-//       query.fullAddress = { $regex: fullAddress, $options: "i" };
-//     }
-
-//     if (dateFrom || dateTo) {
-//       query.createdAt = {};
-//       if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
-//       if (dateTo) query.createdAt.$lte = new Date(dateTo);
-//     }
-
-//     /** -------------------------------
-//      * Fetch Data + Count
-//      * ------------------------------- */
-//     const [buyers, total] = await Promise.all([
-//       Buyer.find(query)
-//         .populate("relatedEntity", "businessName province")
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limit),
-
-//       Buyer.countDocuments(query),
-//     ]);
-
-//     res.status(200).json({
-//       data: buyers,
-//       meta: {
-//         page,
-//         limit,
-//         total,
-//         totalPages: Math.ceil(total / limit),
-//       },
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
 
 export const getBuyers = async (req, res, next) => {
   try {

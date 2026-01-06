@@ -1043,7 +1043,7 @@ const invoiceItemSchema = new mongoose.Schema(
 const invoiceSchema = new mongoose.Schema(
   {
     invoiceNumber: { type: String, required: true, unique: true },
-    invoiceDate: { type: Date, default: Date.now },
+    date: { type: Date, default: Date.now },
     referenceNumber: { type: String },
     salesman: { type: String },
     documentType: {
@@ -1051,8 +1051,18 @@ const invoiceSchema = new mongoose.Schema(
       enum: ["Sale Invoice", "Purchase Invoice", "Credit Note", "Debit Note"],
       required: true,
     },
+    isSent: { type: Boolean, default: false },
     buyer: { type: mongoose.Schema.Types.ObjectId, ref: "Buyer", required: true },
     items: [invoiceItemSchema],
+    totalValue: { type: Number, default: 0 },
+    
+    /** 🔗 Relation to Entity */
+    relatedEntity: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Entity",
+      required: true,
+      index: true,
+    }
   },
   { timestamps: true }
 );

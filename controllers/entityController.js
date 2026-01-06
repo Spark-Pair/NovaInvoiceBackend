@@ -50,36 +50,6 @@ export const createEntity = async (req, res, next) => {
   }
 };
 
-// // GET /api/entities?page=1&limit=50
-// export const getEntities = async (req, res, next) => {
-//   try {
-//     const page = Math.max(1, parseInt(req.query.page) || 1);
-//     const limit = Math.min(100, parseInt(req.query.limit) || 50);
-//     const skip = (page - 1) * limit;
-
-//     const [entities, total] = await Promise.all([
-//       Entity.find()
-//         .populate("user", "name username role")
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limit),
-//       Entity.countDocuments()
-//     ]);
-
-//     res.status(200).json({
-//       data: entities,
-//       meta: {
-//         page,
-//         limit,
-//         total,
-//         totalPages: Math.ceil(total / limit),
-//       }
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
 // GET /api/entities?page=1&limit=50&businessName=abc&status=Active
 export const getEntities = async (req, res, next) => {
   try {
