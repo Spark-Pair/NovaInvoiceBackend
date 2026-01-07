@@ -197,7 +197,8 @@ export const getInvoices = async (req, res, next) => {
       sentInvoices
     ] = await Promise.all([
       Invoice.find(query)
-        .populate("buyer", "buyerName ntn cnic strn")
+        .populate("buyer", "buyerName ntn cnic strn address province registrationType")
+        .populate("relatedEntity")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
