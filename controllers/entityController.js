@@ -53,6 +53,8 @@ export const createEntity = async (req, res, next) => {
 // GET /api/entities?page=1&limit=50&businessName=abc&status=Active
 export const getEntities = async (req, res, next) => {
   try {
+    const noLimit = req.query.noLimit === "true";
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, parseInt(req.query.limit) || 50);
     const skip = (page - 1) * limit;
@@ -102,52 +104,65 @@ export const getEntities = async (req, res, next) => {
     }
 
     /** -------------------------------
-     *  Handle username filter (via User)
+     *  Username filter (via User)
      *  ------------------------------- */
-    let userIds = null;
-
     if (username) {
       const users = await User.find({
         username: { $regex: username, $options: "i" },
       }).select("_id");
 
-      userIds = users.map((u) => u._id);
+      const userIds = users.map((u) => u._id);
+
+      // fast empty response
+      if (userIds.length === 0) {
+        return res.status(200).json({
+          data: [],
+          meta: {
+            page: 1,
+            limit: 0,
+            total: 0,
+            totalPages: 0,
+          },
+          stats: {
+            activeTotal: 0,
+            activeProvinceTotal: 0,
+          },
+        });
+      }
+
       query.user = { $in: userIds };
     }
 
     /** -------------------------------
-     *  Fetch Data + Count
+     *  Fetch Data
      *  ------------------------------- */
+    const entitiesQuery = Entity.find(query)
+      .populate("user", "name username role")
+      .sort({ createdAt: -1 });
+
+    if (!noLimit) {
+      entitiesQuery.skip(skip).limit(limit);
+    }
+
     const [
       entities,
       total,
       activeTotal,
-      activeProvinceTotal
+      activeProvinceTotal,
     ] = await Promise.all([
-      // paginated data
-      Entity.find(query)
-        .populate("user", "name username role")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-
-      // filtered total
+      entitiesQuery,
       Entity.countDocuments(query),
-
-      // total active entities
       Entity.countDocuments({ isActive: true }),
-
-      // distinct provinces count where active
-      Entity.distinct("province", { isActive: true }).then(p => p.length),
+      Entity.distinct("province", { isActive: true }).then((p) => p.length),
     ]);
 
     res.status(200).json({
       data: entities,
       meta: {
-        page,
-        limit,
+        page: noLimit ? 1 : page,
+        limit: noLimit ? entities.length : limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: noLimit ? 1 : Math.ceil(total / limit),
       },
       stats: {
         activeTotal,
