@@ -138,7 +138,7 @@ export const getInvoices = async (req, res, next) => {
      *  Build Query Executor
      *  ------------------------------- */
     let invoiceQuery = Invoice.find(query)
-      .populate("buyer", "buyerName ntn cnic strn address province registrationType")
+      .populate("buyer", "buyerName ntn cnic strn fullAddress province registrationType")
       .populate("relatedEntity")
       .sort({ createdAt: -1 });
 
@@ -164,6 +164,76 @@ export const getInvoices = async (req, res, next) => {
         totalPages: noLimit ? 1 : Math.ceil(total / limit),
       },
       stats: { sentInvoices },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      invoiceNumber,
+      date,
+      documentType,
+      salesman,
+      referenceNumber,
+      buyerId,
+      items = [],
+    } = req.body;
+
+    console.log(req.body);
+    
+    return;
+
+    // 🔐 Get entity from logged-in user
+    const entity = await Entity.findOne({ user: req.user._id });
+    if (!entity) {
+      return res
+        .status(403)
+        .json({ message: "Entity not found for this user" });
+    }
+
+    // 🔍 Validate buyer ownership
+    const buyer = await Buyer.findOne({
+      _id: buyerId,
+      relatedEntity: entity._id,
+      isActive: true,
+    });
+
+    if (!buyer) {
+      return res.status(404).json({ message: "Buyer not found" });
+    }
+
+    // 🧮 Recalculate items securely
+    const calculatedItems = items.map(calculateItemBackend);
+
+    // 🧮 Invoice total
+    const totalValue = calculatedItems.reduce(
+      (sum, item) => sum + item.totalItemValue,
+      0
+    );
+
+    console.log({ calculatedItems, totalValue });
+
+    // 🧾 Create invoice
+    const invoice = await Invoice.create({
+      invoiceNumber,
+      date: date ? new Date(date) : new Date(),
+      referenceNumber,
+      salesman,
+      documentType,
+      buyer: buyer._id,
+      items: calculatedItems,
+      totalValue,
+      relatedEntity: entity._id,
+    });
+
+    res.status(201).json({
+      message: "Invoice created successfully",
+      invoice,
     });
   } catch (err) {
     next(err);
