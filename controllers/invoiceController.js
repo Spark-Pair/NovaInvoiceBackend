@@ -1,3 +1,4 @@
+import xlsx from 'xlsx';
 import Buyer from "../models/Buyer.js";
 import Entity from "../models/Entity.js";
 import Invoice from "../models/Invoice.js";
@@ -42,8 +43,6 @@ export const createInvoice = async (req, res, next) => {
       (sum, item) => sum + item.totalItemValue,
       0
     );
-
-    console.log({ calculatedItems, totalValue });
 
     // 🧾 Create invoice
     const invoice = await Invoice.create({
@@ -180,13 +179,9 @@ export const updateInvoice = async (req, res, next) => {
       documentType,
       salesman,
       referenceNumber,
-      buyerId,
+      buyer,
       items = [],
     } = req.body;
-
-    console.log(req.body);
-    
-    return;
 
     // 🔐 Get entity from logged-in user
     const entity = await Entity.findOne({ user: req.user._id });
@@ -197,13 +192,13 @@ export const updateInvoice = async (req, res, next) => {
     }
 
     // 🔍 Validate buyer ownership
-    const buyer = await Buyer.findOne({
-      _id: buyerId,
+    const relatedBuyer = await Buyer.findOne({
+      _id: buyer._id,
       relatedEntity: entity._id,
       isActive: true,
     });
 
-    if (!buyer) {
+    if (!relatedBuyer) {
       return res.status(404).json({ message: "Buyer not found" });
     }
 
@@ -216,23 +211,25 @@ export const updateInvoice = async (req, res, next) => {
       0
     );
 
-    console.log({ calculatedItems, totalValue });
-
     // 🧾 Create invoice
-    const invoice = await Invoice.create({
-      invoiceNumber,
-      date: date ? new Date(date) : new Date(),
-      referenceNumber,
-      salesman,
-      documentType,
-      buyer: buyer._id,
-      items: calculatedItems,
-      totalValue,
-      relatedEntity: entity._id,
-    });
+    const invoice = await Invoice.findByIdAndUpdate(
+      id,
+      {
+        invoiceNumber,
+        date: date ? new Date(date) : new Date(),
+        referenceNumber,
+        salesman,
+        documentType,
+        buyer: relatedBuyer._id,
+        items: calculatedItems,
+        totalValue,
+        relatedEntity: entity._id,
+      },
+      { new: true }
+    );
 
     res.status(201).json({
-      message: "Invoice created successfully",
+      message: "Invoice updated successfully",
       invoice,
     });
   } catch (err) {
@@ -263,6 +260,179 @@ export const deleteInvoice = async (req, res, next) => {
 
     res.status(200).json({
       message: "Invoice deleted successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const excelDateToJSDate = (excelDate) => {
+  if (excelDate instanceof Date) return excelDate;
+
+  // convert numeric strings → number
+  if (typeof excelDate === 'string' && !isNaN(excelDate)) {
+    excelDate = Number(excelDate);
+  }
+
+  if (typeof excelDate === 'number') {
+    return new Date((excelDate - 25569) * 86400 * 1000);
+  }
+
+  if (typeof excelDate === 'string') {
+    return new Date(excelDate); // ISO / formatted dates
+  }
+
+  return null;
+};
+
+const parseRate = (rate) => {
+  if (typeof rate === 'number' && rate >= 0 && rate <= 1) {
+    return (rate * 100).toFixed(2) + '%';
+  }
+  return rate;
+};
+
+export const bulkUploadInvoices = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    /** 🔐 Get entity */
+    const entity = await Entity.findOne({ user: req.user._id });
+    if (!entity) {
+      return res.status(403).json({ message: 'Entity not found' });
+    }
+
+    /** 📄 Read Excel */
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: null });
+
+    if (!rows.length) {
+      return res.status(400).json({ message: 'Excel file is empty' });
+    }
+
+    /** 🧠 Group rows by Invoice Number */
+    const grouped = {};
+    for (const row of rows) {
+      if (!grouped[row['Invoice Number *']]) {
+        grouped[row['Invoice Number *']] = [];
+      }
+      grouped[row['Invoice Number *']].push(row);
+    }
+
+    // console.log(grouped);
+    
+    const createdInvoices = [];
+
+    /** 🔁 Process each invoice */
+    for (const invoiceNumber of Object.keys(grouped)) {
+      const invoiceRows = grouped[invoiceNumber];
+      const firstRow = invoiceRows[0];
+
+      // const buyerData = {
+      //   buyerName: firstRow['Buyer Name *'],
+      //   registrationType: firstRow['Buyer Registration Type *'],
+      //   province: firstRow['Buyer Province *'],
+      //   ntn: firstRow['Buyer NTN *'],
+      //   cnic: firstRow['BUYER CNIC *'],
+      //   strn: firstRow['Buyer STRN'],
+      //   fullAddress: firstRow['Buyer Address *'],
+      //   relatedEntity: entity._id,
+      // }
+
+      // console.log(buyerData);
+
+      /** 👤 Buyer: find or create */
+      let buyer = await Buyer.findOne({
+        buyerName: firstRow['Buyer Name *'],
+        relatedEntity: entity._id,
+        isActive: true,
+      });
+
+      if (!buyer) {
+        buyer = await Buyer.create({
+          buyerName: firstRow['Buyer Name *'],
+          registrationType: firstRow['Buyer Registration Type *'],
+          province: firstRow['Buyer Province *'].toUpperCase(),
+          ntn: firstRow['Buyer NTN *'],
+          cnic: firstRow['BUYER CNIC *'],
+          strn: firstRow['Buyer STRN'],
+          fullAddress: firstRow['Buyer Address *'],
+          relatedEntity: entity._id,
+        });
+      }
+
+      /** 🧾 Build items */
+      const items = invoiceRows.map(row =>
+        calculateItemBackend({
+          hsCode: row['HS Code *'],
+          description: row['Product Description *'],
+          saleType: row['Sale Type *'],
+          quantity: Number(row['Quantity *'] || 0),
+          uom: row['UOM *'],
+          rate: parseRate(row['Rate *']),
+          unitPrice: Number(row['Unit Price *'] || 0),
+          discount: Number(row['Discount (Sent to FBR)'] || 0),
+          otherDiscount: Number(row['Other Discount (not sent)'] || 0),
+          tradeDiscount: Number(row['Trade Discount (not sent)'] || 0),
+          salesTaxWithheld: Number(row['Sales Tax WHT'] || 0),
+          salesTax: Number(row['Sales Tax *'] || 0),
+          extraTax: Number(row['Extra Tax'] || 0),
+          furtherTax: Number(row['Further Tax'] || 0),
+          federalExciseDuty: Number(row['FED Payable'] || 0),
+          fixedValue: Number(row['Retail Price *'] || 0),
+          sroScheduleNo: row['SRO NO./Schedule No'] || row[' SRO NO./Schedule No '],
+          sroItemSerialNo: row['SRO Item'],
+          t236g: Number(row['236G'] || 0),
+          t236h: Number(row['236H'] || 0),
+        })
+      );
+
+      // console.log(items);
+
+      /** 🧮 Invoice total */
+      const totalValue = items.reduce(
+        (sum, item) => sum + item.totalItemValue,
+        0
+      );
+      
+      // console.log(totalValue);
+      
+      // const invoiceData = {
+      //   invoiceNumber,
+      //   date: firstRow['Invoice Date *'] ? excelDateToJSDate(firstRow['Invoice Date *']) : new Date(),
+      //   documentType: firstRow['Invoice Type *'] || 'Sale Invoice',
+      //   referenceNumber: firstRow['Invoice Ref No'],
+      //   salesman: firstRow['Salesman'],
+      //   buyer: buyer._id,
+      //   items,
+      //   totalValue,
+      //   relatedEntity: entity._id,
+      // }
+
+      // console.log(invoiceData);
+      
+      /** 🧾 Create invoice */
+      const invoice = await Invoice.create({
+        invoiceNumber,
+        date: firstRow['Invoice Date *'] ? excelDateToJSDate(firstRow['Invoice Date *']) : new Date(),
+        documentType: firstRow['Invoice Type *'] || 'Sale Invoice',
+        referenceNumber: firstRow['Invoice Ref No'],
+        salesman: firstRow['Salesman'],
+        buyer: buyer._id,
+        items,
+        totalValue,
+        relatedEntity: entity._id,
+      });
+
+      createdInvoices.push(invoice._id);
+    }
+
+    return res.status(201).json({
+      message: 'Bulk invoices uploaded successfully',
+      totalInvoices: createdInvoices.length,
     });
   } catch (err) {
     next(err);

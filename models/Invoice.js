@@ -305,7 +305,6 @@ const invoiceItemSchema = new mongoose.Schema(
         "Zero Rated Elec.",
         "Zero Rated Gas"
       ],
-      required: true,
     },
     sroItemSerialNo: {
       type: String,
@@ -1033,7 +1032,6 @@ const invoiceItemSchema = new mongoose.Schema(
         "Region-I",
         "Region-II"
       ],
-      required: true,
     },
     totalItemValue: { type: Number, default: 0 },
   },
