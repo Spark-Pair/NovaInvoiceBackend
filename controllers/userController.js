@@ -66,6 +66,7 @@ export const loginUser = async (req, res, next) => {
       name: user.name,        
       username: user.username,
       role: user.role,
+      settings: user.settings,
       token,
     });
   } catch (err) {
@@ -96,6 +97,34 @@ export const logoutUser = async (req, res, next) => {
     await session.save();
 
     res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GTET /api/users/settings
+export const getUserSettings = async (req, res, next) => {
+  try {
+    const userId = req.user.id; // Assuming user ID is available in req.user
+    const user = await User.findById(userId).select("settings");
+    res.status(200).json(user.settings);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PATCH /api/users/settings
+export const setUserSettings = async (req, res, next) => {
+  try {
+    const userId = req.user.id; // Assuming user ID is available in req.user
+    const { settings } = req.body;
+
+    console.log({ userId, settings });
+
+    // Update user settings
+    await User.findByIdAndUpdate(userId, { settings });
+
+    res.status(200).json({ message: "Settings updated successfully" });
   } catch (err) {
     next(err);
   }

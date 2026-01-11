@@ -11,6 +11,9 @@ const userSchema = new mongoose.Schema(
       default: "client",
     },
     password: { type: String, required: true },
+    settings: {
+      configs: { type: Object, default: {} },
+    },
   },
   { timestamps: true }
 );
