@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes.js';
 import entityRoutes from './routes/entityRoutes.js';
 import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import connectDB from './config/db.js';
 
 dotenv.config();
 
@@ -14,6 +15,16 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("Database connection failed on request:", err.message);
+    res.status(500).json({ message: "Database connection failed" });
+  }
+});
 
 // Routes
 app.use('/api/users', userRoutes);
