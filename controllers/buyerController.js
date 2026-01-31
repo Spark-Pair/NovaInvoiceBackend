@@ -14,12 +14,7 @@ export const createBuyer = async (req, res, next) => {
     } = req.body;
 
     // 🔐 Get entity from logged-in user
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(403).json({
-        message: "Entity not found for this user",
-      });
-    }
+    const entity = req.entity;
 
     const buyer = await Buyer.create({
       buyerName,
@@ -42,97 +37,6 @@ export const createBuyer = async (req, res, next) => {
   }
 };
 
-// export const getBuyers = async (req, res, next) => {
-//   try {
-//     const noLimit = req.query.noLimit === "true";
-
-//     const page = Math.max(1, parseInt(req.query.page) || 1);
-//     const limit = Math.min(100, parseInt(req.query.limit) || 50);
-//     const skip = (page - 1) * limit;
-
-//     // 🔐 get entity from logged-in user
-//     const entity = await Entity.findOne({ user: req.user._id });
-//     if (!entity) {
-//       return res.status(404).json({ message: "Entity not found" });
-//     }
-
-//     // 🔍 build filters
-//     const filters = {
-//       relatedEntity: entity._id,
-//     };
-
-//     if (req.query.buyerName) {
-//       filters.buyerName = { $regex: req.query.buyerName, $options: "i" };
-//     }
-
-//     if (req.query.registrationType) {
-//       filters.registrationType = req.query.registrationType;
-//     }
-
-//     if (req.query.province) {
-//       filters.province = req.query.province;
-//     }
-
-//     if (req.query.ntn) {
-//       filters.ntn = { $regex: req.query.ntn, $options: "i" };
-//     }
-
-//     if (req.query.cnic) {
-//       filters.cnic = { $regex: req.query.cnic, $options: "i" };
-//     }
-
-//     if (req.query.status) {
-//       filters.isActive = req.query.status === "Active";
-//     }
-
-//     if (req.query.dateFrom || req.query.dateTo) {
-//       filters.createdAt = {};
-//       if (req.query.dateFrom) {
-//         filters.createdAt.$gte = new Date(req.query.dateFrom);
-//       }
-//       if (req.query.dateTo) {
-//         filters.createdAt.$lte = new Date(req.query.dateTo);
-//       }
-//     }
-
-//     const [buyers, total] = await Promise.all([
-//       Buyer.find(filters)
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limit),
-
-//       Buyer.countDocuments(filters),
-//     ]);
-
-//     // 📊 stats (simple & clean)
-//     const activeTotal = await Buyer.countDocuments({
-//       relatedEntity: entity._id,
-//       isActive: true,
-//     });
-
-//     const activeProvinceTotal = await Buyer.distinct("province", {
-//       relatedEntity: entity._id,
-//       isActive: true,
-//     }).then(arr => arr.length);
-
-//     res.status(200).json({
-//       data: buyers,
-//       meta: {
-//         page,
-//         limit,
-//         total,
-//         totalPages: Math.ceil(total / limit),
-//       },
-//       stats: {
-//         activeTotal,
-//         activeProvinceTotal,
-//       },
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
 export const getBuyers = async (req, res, next) => {
   try {
     const noLimit = req.query.noLimit === "true";
@@ -142,10 +46,7 @@ export const getBuyers = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     // 🔐 get entity from logged-in user
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(404).json({ message: "Entity not found" });
-    }
+    const entity = req.entity;
 
     // 🔍 build filters
     const filters = {

@@ -17,12 +17,7 @@ export const createInvoice = async (req, res, next) => {
     } = req.body;
 
     // 🔐 Get entity from logged-in user
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res
-        .status(403)
-        .json({ message: "Entity not found for this user" });
-    }
+    const entity = req.entity;
 
     // 🔍 Validate buyer ownership
     const buyer = await Buyer.findOne({
@@ -80,10 +75,7 @@ export const getInvoices = async (req, res, next) => {
     /** -------------------------------
      *  Get Entity from logged-in user
      *  ------------------------------- */
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(404).json({ message: "Entity not found" });
-    }
+    const entity = req.entity;
 
     /** -------------------------------
      *  Build Invoice Query
@@ -184,12 +176,7 @@ export const updateInvoice = async (req, res, next) => {
     } = req.body;
 
     // 🔐 Get entity from logged-in user
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res
-        .status(403)
-        .json({ message: "Entity not found for this user" });
-    }
+    const entity = req.entity;
 
     // 🔍 Validate buyer ownership
     const relatedBuyer = await Buyer.findOne({
@@ -239,10 +226,7 @@ export const updateInvoice = async (req, res, next) => {
 
 export const deleteInvoice = async (req, res, next) => {
   try {
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(404).json({ message: "Entity not found" });
-    }
+    const entity = req.entity;
 
     const invoice = await Invoice.findOne({
       _id: req.params.id,
@@ -299,10 +283,7 @@ export const bulkUploadInvoices = async (req, res, next) => {
     }
 
     /** 🔐 Get entity */
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(403).json({ message: 'Entity not found' });
-    }
+    const entity = req.entity;
 
     /** 📄 Read Excel */
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -442,10 +423,9 @@ export const bulkUploadInvoices = async (req, res, next) => {
 export const getBuyers = async (req, res, next) => {
   try {
     // 🔐 get entity from logged-in user
-    const entity = await Entity.findOne({ user: req.user._id });
-    if (!entity) {
-      return res.status(404).json({ message: "Entity not found" });
-    }
+    const entity = req.entity;
+    console.log(entity);
+    
 
     // const buyers = await Buyer.find({ relatedEntity: entity._id }).select('_id buyerName');
     const buyers = await Buyer.find({
