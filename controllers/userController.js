@@ -105,7 +105,7 @@ export const logoutUser = async (req, res, next) => {
 // GTET /api/users/settings
 export const getUserSettings = async (req, res, next) => {
   try {
-    const userId = req.user.id; // Assuming user ID is available in req.user
+    const userId = req.entity.user; // Assuming user ID is available in req.user
     const user = await User.findById(userId).select("settings");
     res.status(200).json(user.settings);
   } catch (err) {
@@ -116,7 +116,7 @@ export const getUserSettings = async (req, res, next) => {
 // PATCH /api/users/settings
 export const setUserSettings = async (req, res, next) => {
   try {
-    const userId = req.user.id; // Assuming user ID is available in req.user
+    const userId = req.entity.user; // Assuming user ID is available in req.user
     const { settings } = req.body;
 
     console.log({ userId, settings });
