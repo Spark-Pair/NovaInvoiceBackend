@@ -7,6 +7,7 @@ import entityRoutes from './routes/entityRoutes.js';
 import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import connectDB from './config/db.js';
+import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
 
@@ -32,10 +33,7 @@ app.use('/api/entities', entityRoutes);
 app.use('/api/buyers', buyerRoutes);
 app.use('/api/invoices', invoiceRoutes);
 
-// Error handling middleware (optional)
-app.use((err, req, res, next) => {
-    const status = err.status || 500;
-    res.status(status).json({ message: err.message || 'Something went wrong' });
-});
+// Error handling middleware (single, centralized)
+app.use(errorHandler);
 
 export default app;

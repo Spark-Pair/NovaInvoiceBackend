@@ -15,14 +15,3 @@ if (process.env.VERCEL !== "true") {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
-// mongoose.connect(MONGO_URI)  // ✅ removed options
-//     .then(() => {
-//         console.log('MongoDB connected');
-//         app.listen(PORT, () => {
-//             console.log(`Server running on port ${PORT}`);
-//         });
-//     })
-//     .catch((err) => {
-//         console.error('MongoDB connection error:', err);
-//     });

@@ -209,6 +209,7 @@ const invoiceItemSchema = new mongoose.Schema(
     sroScheduleNo: {
       type: String,
       enum: [
+        "",
         "01(I)/2022",
         "1007(I)/2005",
         "1125(I)/2011",
@@ -309,6 +310,7 @@ const invoiceItemSchema = new mongoose.Schema(
     sroItemSerialNo: {
       type: String,
       enum: [
+        "",
         "-",
         "1",
         "1(A)",
