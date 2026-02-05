@@ -119,8 +119,6 @@ export const setUserSettings = async (req, res, next) => {
     const userId = req.entity.user; // Assuming user ID is available in req.user
     const { settings } = req.body;
 
-    console.log({ userId, settings });
-
     // Update user settings
     await User.findByIdAndUpdate(userId, { settings });
 

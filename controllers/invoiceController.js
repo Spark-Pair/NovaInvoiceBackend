@@ -302,8 +302,6 @@ export const bulkUploadInvoices = async (req, res, next) => {
       }
       grouped[row['Invoice Number *']].push(row);
     }
-
-    // console.log(grouped);
     
     const createdInvoices = [];
 
@@ -311,19 +309,6 @@ export const bulkUploadInvoices = async (req, res, next) => {
     for (const invoiceNumber of Object.keys(grouped)) {
       const invoiceRows = grouped[invoiceNumber];
       const firstRow = invoiceRows[0];
-
-      // const buyerData = {
-      //   buyerName: firstRow['Buyer Name *'],
-      //   registrationType: firstRow['Buyer Registration Type *'],
-      //   province: firstRow['Buyer Province *'],
-      //   ntn: firstRow['Buyer NTN *'],
-      //   cnic: firstRow['BUYER CNIC *'],
-      //   strn: firstRow['Buyer STRN'],
-      //   fullAddress: firstRow['Buyer Address *'],
-      //   relatedEntity: entity._id,
-      // }
-
-      // console.log(buyerData);
 
       /** 👤 Buyer: find or create */
       let buyer = await Buyer.findOne({
@@ -371,29 +356,11 @@ export const bulkUploadInvoices = async (req, res, next) => {
         })
       );
 
-      // console.log(items);
-
       /** 🧮 Invoice total */
       const totalValue = items.reduce(
         (sum, item) => sum + item.totalItemValue,
         0
       );
-      
-      // console.log(totalValue);
-      
-      // const invoiceData = {
-      //   invoiceNumber,
-      //   date: firstRow['Invoice Date *'] ? excelDateToJSDate(firstRow['Invoice Date *']) : new Date(),
-      //   documentType: firstRow['Invoice Type *'] || 'Sale Invoice',
-      //   referenceNumber: firstRow['Invoice Ref No'],
-      //   salesman: firstRow['Salesman'],
-      //   buyer: buyer._id,
-      //   items,
-      //   totalValue,
-      //   relatedEntity: entity._id,
-      // }
-
-      // console.log(invoiceData);
       
       /** 🧾 Create invoice */
       const invoice = await Invoice.create({
@@ -424,10 +391,7 @@ export const getBuyers = async (req, res, next) => {
   try {
     // 🔐 get entity from logged-in user
     const entity = req.entity;
-    console.log(entity);
-    
 
-    // const buyers = await Buyer.find({ relatedEntity: entity._id }).select('_id buyerName');
     const buyers = await Buyer.find({
       relatedEntity: entity._id,
       isActive: true,
@@ -453,22 +417,3 @@ export const getBuyerDetails = async (req, res, next) => {
     next(err);
   }
 };
-
-// export const getBuyerDetails = async (req, res, next) => {
-//   try {
-//     // 🔐 get entity from logged-in user
-//     const entity = await Entity.findOne({ user: req.user._id });
-//     if (!entity) {
-//       return res.status(404).json({ message: "Entity not found" });
-//     }
-
-//     const buyer = await Buyer.find({ _id: req.params.id, relatedEntity: entity._id });
-//     if (!buyer) return res.status(404).json({ message: "Buyer not found" });
-
-//     res.status(200).json({
-//       buyer
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
