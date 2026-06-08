@@ -32,11 +32,29 @@ const entitySchema = new mongoose.Schema(
     strn: { type: String },
     fullAddress: { type: String, required: true },
     isActive: { type: Boolean, default: true },
+    fbrApiKeys: [
+      {
+        environment: {
+          type: String,
+          enum: ["sandbox", "production"],
+          required: true,
+        },
+        apiKey: { type: String, required: true },
+        expiryDate: { type: Date, required: true },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
 
     // Link to automatically created user
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
+);
+
+entitySchema.index(
+  { _id: 1, "fbrApiKeys.environment": 1 },
+  { unique: true, sparse: true }
 );
 
 const Entity = mongoose.model("Entity", entitySchema);

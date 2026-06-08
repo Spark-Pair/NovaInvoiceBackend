@@ -143,7 +143,7 @@ export const getInvoices = async (req, res, next) => {
     const [invoices, total, sentInvoices] = await Promise.all([
       invoiceQuery,
       Invoice.countDocuments(query),
-      Invoice.countDocuments({ isSent: true }),
+      Invoice.countDocuments({ relatedEntity: entity._id, isSent: true }),
     ]);
 
     res.status(200).json({

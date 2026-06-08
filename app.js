@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes.js';
 import entityRoutes from './routes/entityRoutes.js';
 import buyerRoutes from './routes/buyerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import fbrRoutes from './routes/fbrRoutes.js';
 import connectDB from './config/db.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
@@ -32,6 +33,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/entities', entityRoutes);
 app.use('/api/buyers', buyerRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/fbr', fbrRoutes);
 
 // Error handling middleware (single, centralized)
 app.use(errorHandler);

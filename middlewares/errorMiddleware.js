@@ -1,7 +1,7 @@
 export const errorHandler = (err, req, res, next) => {
   let statusCode = res.statusCode && res.statusCode !== 200
     ? res.statusCode
-    : 500;
+    : err.statusCode || 500;
 
   let message = err.message || 'Server error';
 
@@ -20,5 +20,8 @@ export const errorHandler = (err, req, res, next) => {
       .join(', ');
   }
 
-  res.status(statusCode).json({ message });
+  res.status(statusCode).json({
+    message,
+    ...(err.fbrResponse ? { fbrResponse: err.fbrResponse } : {}),
+  });
 };
