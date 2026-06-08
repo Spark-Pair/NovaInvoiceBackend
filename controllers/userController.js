@@ -23,7 +23,7 @@ const generateToken = (id) => {
 // POST /api/users/login
 export const loginUser = async (req, res, next) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, forceLogin = false } = req.body;
 
     const user = await User.findOne({ username });
     if (!user || !(await user.matchPassword(password))) {
@@ -45,10 +45,17 @@ export const loginUser = async (req, res, next) => {
     });
 
     if (activeSession) {
-      return res.status(403).json({
-        message:
-          "User is already logged in",
-      });
+      if (!forceLogin) {
+        return res.status(409).json({
+          code: "ACTIVE_SESSION",
+          message: "Already logged in somewhere else",
+        });
+      }
+
+      await UserSession.updateMany(
+        { user: user._id, isActive: true },
+        { isActive: false, loggedOutAt: new Date() }
+      );
     }
 
     // ✅ No active session → allow login
