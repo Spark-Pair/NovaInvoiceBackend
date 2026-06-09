@@ -7,10 +7,11 @@ const userSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true },
     role: {
       type: String,
-      enum: ["admin", "client"],
+      enum: ["dev", "admin", "client"],
       default: "client",
     },
     password: { type: String, required: true },
+    isActive: { type: Boolean, default: true },
     settings: {
       configs: { type: Object, default: {} },
     },

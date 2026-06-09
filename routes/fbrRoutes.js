@@ -12,7 +12,7 @@ import { resolveEntity } from "../middlewares/resolveEntity.js";
 
 const router = express.Router();
 
-router.use(protect, checkRole(["admin", "client"]), resolveEntity);
+router.use(protect, checkRole(["dev", "admin", "client"]), resolveEntity);
 
 router.get("/settings", getFbrSettings);
 router.put("/settings/keys", upsertFbrApiKey);

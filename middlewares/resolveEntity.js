@@ -10,7 +10,7 @@ export const resolveEntity = async (req, res, next) => {
     }
 
     // 👑 Admin acting as client: entity comes from header
-    if (req.user.role === "admin") {
+    if (req.user.role === "admin" || req.user.role === "dev") {
       const entityId = req.headers["x-entity-id"];
 
       if (!entityId) {
