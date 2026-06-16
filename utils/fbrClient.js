@@ -161,6 +161,11 @@ export const callFbr = async ({ payload, apiKey, environment, action }) => {
   } catch (err) {
     const error = new Error(err.message || "Unable to reach FBR API");
     error.statusCode = 502;
+    error.fbrResponse = {
+      error: "Unable to reach FBR API",
+      message: err.message,
+      code: err.code,
+    };
     throw error;
   }
 
