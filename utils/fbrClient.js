@@ -1,3 +1,5 @@
+import { request } from "node:https";
+import { URL } from "node:url";
 import Invoice from "../models/Invoice.js";
 
 const FBR_URLS = {
@@ -104,28 +106,75 @@ export const getEntityFbrKey = (entity, environment) => {
   return key;
 };
 
-export const callFbr = async ({ payload, apiKey, environment, action }) => {
-  const response = await fetch(FBR_URLS[environment][action], {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
+const postJson = ({ url, payload, apiKey }) =>
+  new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const endpoint = new URL(url);
+
+    const req = request(
+      {
+        method: "POST",
+        hostname: endpoint.hostname,
+        path: `${endpoint.pathname}${endpoint.search}`,
+        port: endpoint.port || 443,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          Authorization: `Bearer ${apiKey}`,
+        },
+        timeout: 60000,
+      },
+      (res) => {
+        let text = "";
+
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          text += chunk;
+        });
+        res.on("end", () => {
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            text,
+          });
+        });
+      }
+    );
+
+    req.on("timeout", () => {
+      req.destroy(new Error("FBR request timed out"));
+    });
+    req.on("error", reject);
+    req.write(body);
+    req.end();
   });
 
-  const text = await response.text();
+export const callFbr = async ({ payload, apiKey, environment, action }) => {
+  let response;
+
+  try {
+    response = await postJson({
+      url: FBR_URLS[environment][action],
+      payload,
+      apiKey,
+    });
+  } catch (err) {
+    const error = new Error(err.message || "Unable to reach FBR API");
+    error.statusCode = 502;
+    throw error;
+  }
+
   let data;
 
   try {
-    data = text ? JSON.parse(text) : {};
+    data = response.text ? JSON.parse(response.text) : {};
   } catch {
-    data = { raw: text };
+    data = { raw: response.text };
   }
 
   if (!response.ok) {
     const error = new Error(data?.message || data?.error || `FBR request failed with HTTP ${response.status}`);
-    error.statusCode = response.status;
+    error.statusCode = response.status >= 500 ? 502 : response.status;
     error.fbrResponse = data;
     throw error;
   }

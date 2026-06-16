@@ -20,6 +20,14 @@ export const errorHandler = (err, req, res, next) => {
       .join(', ');
   }
 
+  console.error('API error', {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+    message,
+    fbrResponse: err.fbrResponse,
+  });
+
   res.status(statusCode).json({
     message,
     ...(err.fbrResponse ? { fbrResponse: err.fbrResponse } : {}),
