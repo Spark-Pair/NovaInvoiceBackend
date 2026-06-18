@@ -13,20 +13,36 @@ const FBR_URLS = {
   },
 };
 
+const normalizeText = (value) =>
+  String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const titleCaseProvince = (province = "") =>
-  province
+  normalizeText(province)
     .toLowerCase()
     .split(" ")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-const taxId = (party = {}) => party.ntn || party.cnic || party.strn || "";
+const digitsOnly = (value) => normalizeText(value).replace(/\D/g, "");
+
+const taxId = (party = {}) => {
+  if (party.ntn) {
+    return digitsOnly(String(party.ntn).split("-")[0]);
+  }
+
+  if (party.cnic) return digitsOnly(party.cnic);
+  if (party.strn) return digitsOnly(party.strn);
+
+  return "";
+};
 
 const toDateOnly = (value) => new Date(value).toISOString().slice(0, 10);
 
 const toFbrNumber = (value) => Number(Number(value || 0).toFixed(2));
 
-const toFbrString = (value) => String(value ?? "").trim();
+const toFbrString = (value) => normalizeText(value);
 
 const normalizeRate = (value) => {
   const rate = toFbrString(value);
@@ -103,6 +119,8 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
 
 export const validateFbrPayload = (payload) => {
   const errors = [];
+  const isValidTaxId = (value) => /^\d{7}$|^\d{13}$/.test(value);
+  const isAllZeros = (value) => /^0+$/.test(value);
   const requiredHeaderFields = [
     "invoiceType",
     "invoiceDate",
@@ -126,6 +144,21 @@ export const validateFbrPayload = (payload) => {
   requiredHeaderFields.forEach((field) => {
     if (!payload[field]) errors.push(`${field} is required`);
   });
+
+  if (payload.sellerNTNCNIC && !isValidTaxId(payload.sellerNTNCNIC)) {
+    errors.push("sellerNTNCNIC must be a 7 digit NTN or 13 digit CNIC without dashes");
+  }
+
+  if (payload.buyerNTNCNIC && !isValidTaxId(payload.buyerNTNCNIC)) {
+    errors.push("buyerNTNCNIC must be a 7 digit NTN or 13 digit CNIC without dashes");
+  }
+
+  if (
+    payload.buyerRegistrationType === "Registered" &&
+    (!payload.buyerNTNCNIC || isAllZeros(payload.buyerNTNCNIC))
+  ) {
+    errors.push("Registered buyer must have a real FBR NTN/CNIC, not 0000000000000");
+  }
 
   if (!Array.isArray(payload.items) || payload.items.length === 0) {
     errors.push("At least one invoice item is required");
