@@ -53,6 +53,54 @@ const normalizeRate = (value) => {
   return rate;
 };
 
+const percentRateValue = (value) => {
+  const match = normalizeRate(value).match(/^(\d+(?:\.\d+)?)%$/);
+  return match ? Number(match[1]) : null;
+};
+
+const buildFbrItemPayload = (item) => {
+  const salesValue = toFbrNumber(item.salesValue);
+  const rate = normalizeRate(item.rate);
+  const percentage = percentRateValue(rate);
+  const storedSalesTax = toFbrNumber(item.salesTax);
+  const salesTax =
+    percentage !== null && storedSalesTax === 0 && salesValue > 0
+      ? toFbrNumber((salesValue * percentage) / 100)
+      : storedSalesTax;
+  const extraTax = toFbrNumber(item.extraTax);
+  const furtherTax = toFbrNumber(item.furtherTax);
+  const fedPayable = toFbrNumber(item.federalExciseDuty);
+  const discount = toFbrNumber(item.discount);
+  const calculatedTotal = toFbrNumber(
+    salesValue + salesTax + extraTax + furtherTax + fedPayable - discount
+  );
+  const storedTotal = toFbrNumber(item.totalItemValue);
+  const totalValues =
+    percentage !== null && storedTotal <= salesValue && calculatedTotal > 0
+      ? calculatedTotal
+      : storedTotal;
+
+  return {
+    hsCode: toFbrString(item.hsCode),
+    productDescription: toFbrString(item.description),
+    rate,
+    uoM: toFbrString(item.uom),
+    quantity: toFbrNumber(item.quantity),
+    totalValues,
+    valueSalesExcludingST: salesValue,
+    fixedNotifiedValueOrRetailPrice: toFbrNumber(item.fixedValue),
+    salesTaxApplicable: salesTax,
+    salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
+    extraTax,
+    furtherTax,
+    sroScheduleNo: toFbrString(item.sroScheduleNo),
+    fedPayable,
+    discount,
+    saleType: toFbrString(item.saleType),
+    sroItemSerialNo: toFbrString(item.sroItemSerialNo),
+  };
+};
+
 const normalizeBuyerRegistrationType = (value) =>
   toFbrString(value).toLowerCase() === "registered" ? "Registered" : "Unregistered";
 
@@ -89,25 +137,7 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
     buyerAddress: toFbrString(buyer.fullAddress),
     buyerRegistrationType: normalizeBuyerRegistrationType(buyer.registrationType),
     invoiceRefNo: toFbrString(invoice.referenceNumber),
-    items: invoice.items.map((item) => ({
-      hsCode: toFbrString(item.hsCode),
-      productDescription: toFbrString(item.description),
-      rate: normalizeRate(item.rate),
-      uoM: toFbrString(item.uom),
-      quantity: toFbrNumber(item.quantity),
-      totalValues: toFbrNumber(item.totalItemValue),
-      valueSalesExcludingST: toFbrNumber(item.salesValue),
-      fixedNotifiedValueOrRetailPrice: toFbrNumber(item.fixedValue),
-      salesTaxApplicable: toFbrNumber(item.salesTax),
-      salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
-      extraTax: toFbrNumber(item.extraTax),
-      furtherTax: toFbrNumber(item.furtherTax),
-      sroScheduleNo: toFbrString(item.sroScheduleNo),
-      fedPayable: toFbrNumber(item.federalExciseDuty),
-      discount: toFbrNumber(item.discount),
-      saleType: toFbrString(item.saleType),
-      sroItemSerialNo: toFbrString(item.sroItemSerialNo),
-    })),
+    items: invoice.items.map(buildFbrItemPayload),
   };
 
   if (environment === "sandbox") {
