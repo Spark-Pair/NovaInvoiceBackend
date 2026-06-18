@@ -26,6 +26,20 @@ const toDateOnly = (value) => new Date(value).toISOString().slice(0, 10);
 
 const toFbrNumber = (value) => Number(Number(value || 0).toFixed(2));
 
+const toFbrString = (value) => String(value ?? "").trim();
+
+const normalizeRate = (value) => {
+  const rate = toFbrString(value);
+  const percentMatch = rate.match(/^(\d+)(?:\.0+)?%$/);
+
+  if (percentMatch) return `${percentMatch[1]}%`;
+
+  return rate;
+};
+
+const normalizeBuyerRegistrationType = (value) =>
+  toFbrString(value).toLowerCase() === "registered" ? "Registered" : "Unregistered";
+
 export const maskFbrKey = (key = "") => {
   if (!key) return "";
   if (key.length <= 10) return `${key.slice(0, 2)}...${key.slice(-2)}`;
@@ -47,23 +61,23 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
   const buyer = invoice.buyer;
 
   const payload = {
-    invoiceType: invoice.documentType,
+    invoiceType: toFbrString(invoice.documentType),
     invoiceDate: toDateOnly(invoice.date),
-    sellerNTNCNIC: taxId(seller),
-    sellerBusinessName: seller.businessName,
+    sellerNTNCNIC: toFbrString(taxId(seller)),
+    sellerBusinessName: toFbrString(seller.businessName),
     sellerProvince: titleCaseProvince(seller.province),
-    sellerAddress: seller.fullAddress,
-    buyerNTNCNIC: taxId(buyer),
-    buyerBusinessName: buyer.buyerName,
+    sellerAddress: toFbrString(seller.fullAddress),
+    buyerNTNCNIC: toFbrString(taxId(buyer)),
+    buyerBusinessName: toFbrString(buyer.buyerName),
     buyerProvince: titleCaseProvince(buyer.province),
-    buyerAddress: buyer.fullAddress,
-    buyerRegistrationType: buyer.registrationType,
-    invoiceRefNo: invoice.referenceNumber || "",
+    buyerAddress: toFbrString(buyer.fullAddress),
+    buyerRegistrationType: normalizeBuyerRegistrationType(buyer.registrationType),
+    invoiceRefNo: toFbrString(invoice.referenceNumber),
     items: invoice.items.map((item) => ({
-      hsCode: item.hsCode,
-      productDescription: item.description,
-      rate: item.rate,
-      uoM: item.uom,
+      hsCode: toFbrString(item.hsCode),
+      productDescription: toFbrString(item.description),
+      rate: normalizeRate(item.rate),
+      uoM: toFbrString(item.uom),
       quantity: toFbrNumber(item.quantity),
       totalValues: toFbrNumber(item.totalItemValue),
       valueSalesExcludingST: toFbrNumber(item.salesValue),
@@ -72,19 +86,62 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
       salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
       extraTax: toFbrNumber(item.extraTax),
       furtherTax: toFbrNumber(item.furtherTax),
-      sroScheduleNo: item.sroScheduleNo || "",
+      sroScheduleNo: toFbrString(item.sroScheduleNo),
       fedPayable: toFbrNumber(item.federalExciseDuty),
       discount: toFbrNumber(item.discount),
-      saleType: item.saleType,
-      sroItemSerialNo: item.sroItemSerialNo || "",
+      saleType: toFbrString(item.saleType),
+      sroItemSerialNo: toFbrString(item.sroItemSerialNo),
     })),
   };
 
   if (environment === "sandbox") {
-    payload.scenarioId = invoice.fbrScenarioId || "SN001";
+    payload.scenarioId = toFbrString(invoice.fbrScenarioId) || "SN001";
   }
 
   return payload;
+};
+
+export const validateFbrPayload = (payload) => {
+  const errors = [];
+  const requiredHeaderFields = [
+    "invoiceType",
+    "invoiceDate",
+    "sellerNTNCNIC",
+    "sellerBusinessName",
+    "sellerProvince",
+    "sellerAddress",
+    "buyerBusinessName",
+    "buyerProvince",
+    "buyerAddress",
+    "buyerRegistrationType",
+  ];
+  const requiredItemFields = [
+    "hsCode",
+    "productDescription",
+    "rate",
+    "uoM",
+    "saleType",
+  ];
+
+  requiredHeaderFields.forEach((field) => {
+    if (!payload[field]) errors.push(`${field} is required`);
+  });
+
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    errors.push("At least one invoice item is required");
+  } else {
+    payload.items.forEach((item, index) => {
+      requiredItemFields.forEach((field) => {
+        if (!item[field]) errors.push(`items[${index + 1}].${field} is required`);
+      });
+    });
+  }
+
+  if (payload.scenarioId !== undefined && !payload.scenarioId) {
+    errors.push("scenarioId is required for sandbox");
+  }
+
+  return errors;
 };
 
 export const getEntityFbrKey = (entity, environment) => {

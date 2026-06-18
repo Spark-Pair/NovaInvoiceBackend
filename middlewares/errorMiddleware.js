@@ -26,10 +26,12 @@ export const errorHandler = (err, req, res, next) => {
     statusCode,
     message,
     fbrResponse: err.fbrResponse,
+    fbrPayload: err.fbrPayload,
   });
 
   res.status(statusCode).json({
     message,
     ...(err.fbrResponse ? { fbrResponse: err.fbrResponse } : {}),
+    ...(err.fbrPayload ? { payload: err.fbrPayload } : {}),
   });
 };

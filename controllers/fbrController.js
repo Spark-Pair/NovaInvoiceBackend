@@ -5,6 +5,7 @@ import {
   getEntityFbrKey,
   isFbrValid,
   sanitizeFbrKeys,
+  validateFbrPayload,
 } from "../utils/fbrClient.js";
 
 const normalizeEnvironment = (environment) =>
@@ -83,6 +84,8 @@ export const deleteFbrApiKey = async (req, res, next) => {
 };
 
 const sendInvoiceToFbr = async ({ req, res, next, action }) => {
+  let payload;
+
   try {
     const environment = normalizeEnvironment(req.body.environment);
     const invoice = await findInvoiceForFbr(req.params.id, req.entity._id);
@@ -101,7 +104,17 @@ const sendInvoiceToFbr = async ({ req, res, next, action }) => {
       invoice.fbrScenarioId = req.body.scenarioId;
     }
 
-    const payload = buildFbrInvoicePayload(invoice, environment);
+    payload = buildFbrInvoicePayload(invoice, environment);
+    const payloadErrors = validateFbrPayload(payload);
+
+    if (payloadErrors.length) {
+      return res.status(400).json({
+        message: "Invoice is missing required FBR fields",
+        errors: payloadErrors,
+        payload,
+      });
+    }
+
     const fbrResponse = await callFbr({
       payload,
       apiKey: key.apiKey,
@@ -146,6 +159,9 @@ const sendInvoiceToFbr = async ({ req, res, next, action }) => {
       },
     });
   } catch (err) {
+    if (payload && err.fbrResponse) {
+      err.fbrPayload = payload;
+    }
     next(err);
   }
 };
