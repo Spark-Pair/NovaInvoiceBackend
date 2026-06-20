@@ -143,6 +143,9 @@ export const sanitizeFbrKeys = (keys = []) =>
 export const buildFbrInvoicePayload = (invoice, environment) => {
   const seller = invoice.relatedEntity;
   const buyer = invoice.buyer;
+  const scenarioId =
+    environment === "sandbox" ? toFbrString(invoice.fbrScenarioId) || "SN001" : "";
+  const isSandboxUnregisteredBuyerScenario = scenarioId === "SN002";
 
   const payload = {
     invoiceType: toFbrString(invoice.documentType),
@@ -151,17 +154,19 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
     sellerBusinessName: toFbrString(seller.businessName),
     sellerProvince: titleCaseProvince(seller.province),
     sellerAddress: toFbrString(seller.fullAddress),
-    buyerNTNCNIC: toFbrString(taxId(buyer)),
+    buyerNTNCNIC: isSandboxUnregisteredBuyerScenario ? "0000000000000" : toFbrString(taxId(buyer)),
     buyerBusinessName: toFbrString(buyer.buyerName),
     buyerProvince: titleCaseProvince(buyer.province),
     buyerAddress: toFbrString(buyer.fullAddress),
-    buyerRegistrationType: normalizeBuyerRegistrationType(buyer.registrationType),
+    buyerRegistrationType: isSandboxUnregisteredBuyerScenario
+      ? "Unregistered"
+      : normalizeBuyerRegistrationType(buyer.registrationType),
     invoiceRefNo: toFbrString(invoice.referenceNumber),
     items: invoice.items.map(buildFbrItemPayload),
   };
 
   if (environment === "sandbox") {
-    payload.scenarioId = toFbrString(invoice.fbrScenarioId) || "SN001";
+    payload.scenarioId = scenarioId;
   }
 
   return payload;

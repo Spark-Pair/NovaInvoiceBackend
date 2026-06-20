@@ -179,6 +179,21 @@ export const updateInvoice = async (req, res, next) => {
     const entity = req.entity;
 
     // 🔍 Validate buyer ownership
+    const existingInvoice = await Invoice.findOne({
+      _id: id,
+      relatedEntity: entity._id,
+    });
+
+    if (!existingInvoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    if (existingInvoice.isSent) {
+      return res.status(403).json({
+        message: "Invoice already sent to FBR and cannot be edited",
+      });
+    }
+
     const relatedBuyer = await Buyer.findOne({
       _id: buyer._id,
       relatedEntity: entity._id,
