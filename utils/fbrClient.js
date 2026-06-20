@@ -149,7 +149,6 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
 
 export const validateFbrPayload = (payload) => {
   const errors = [];
-  const isValidTaxId = (value) => /^\d{7}$|^\d{13}$/.test(value);
   const isAllZeros = (value) => /^0+$/.test(value);
   const requiredHeaderFields = [
     "invoiceType",
@@ -174,14 +173,6 @@ export const validateFbrPayload = (payload) => {
   requiredHeaderFields.forEach((field) => {
     if (!payload[field]) errors.push(`${field} is required`);
   });
-
-  if (payload.sellerNTNCNIC && !isValidTaxId(payload.sellerNTNCNIC)) {
-    errors.push("sellerNTNCNIC must be a 7 digit NTN or 13 digit CNIC without dashes");
-  }
-
-  if (payload.buyerNTNCNIC && !isValidTaxId(payload.buyerNTNCNIC)) {
-    errors.push("buyerNTNCNIC must be a 7 digit NTN or 13 digit CNIC without dashes");
-  }
 
   if (
     payload.buyerRegistrationType === "Registered" &&
