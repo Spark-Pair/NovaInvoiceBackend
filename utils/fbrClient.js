@@ -27,9 +27,15 @@ const titleCaseProvince = (province = "") =>
 
 const digitsOnly = (value) => normalizeText(value).replace(/\D/g, "");
 
+const normalizeNtn = (value) =>
+  normalizeText(value)
+    .split("-")[0]
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+
 const taxId = (party = {}) => {
   if (party.ntn) {
-    return digitsOnly(String(party.ntn).split("-")[0]);
+    return normalizeNtn(party.ntn);
   }
 
   if (party.cnic) return digitsOnly(party.cnic);
@@ -104,6 +110,20 @@ const buildFbrItemPayload = (item) => {
 const normalizeBuyerRegistrationType = (value) =>
   toFbrString(value).toLowerCase() === "registered" ? "Registered" : "Unregistered";
 
+const parseFbrJson = (text) => {
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    try {
+      return JSON.parse(text.replace(/,\s*([}\]])/g, "$1"));
+    } catch {
+      return { raw: text };
+    }
+  }
+};
+
 export const maskFbrKey = (key = "") => {
   if (!key) return "";
   if (key.length <= 10) return `${key.slice(0, 2)}...${key.slice(-2)}`;
@@ -149,6 +169,7 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
 
 export const validateFbrPayload = (payload) => {
   const errors = [];
+  const isValidRegistrationNumber = (value) => /^[A-Z]?\d{6}$|^\d{7}$|^\d{13}$/.test(value);
   const isAllZeros = (value) => /^0+$/.test(value);
   const requiredHeaderFields = [
     "invoiceType",
@@ -179,6 +200,14 @@ export const validateFbrPayload = (payload) => {
     (!payload.buyerNTNCNIC || isAllZeros(payload.buyerNTNCNIC))
   ) {
     errors.push("Registered buyer must have a real FBR NTN/CNIC, not 0000000000000");
+  }
+
+  if (
+    payload.buyerRegistrationType === "Registered" &&
+    payload.buyerNTNCNIC &&
+    !isValidRegistrationNumber(payload.buyerNTNCNIC)
+  ) {
+    errors.push("Buyer Registration No. must be a valid NTN, sandbox NTN, or 13 digit CNIC without special characters");
   }
 
   if (!Array.isArray(payload.items) || payload.items.length === 0) {
@@ -282,11 +311,7 @@ export const callFbr = async ({ payload, apiKey, environment, action }) => {
 
   let data;
 
-  try {
-    data = response.text ? JSON.parse(response.text) : {};
-  } catch {
-    data = { raw: response.text };
-  }
+  data = parseFbrJson(response.text);
 
   if (!response.ok) {
     const error = new Error(data?.message || data?.error || `FBR request failed with HTTP ${response.status}`);
