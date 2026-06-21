@@ -71,12 +71,15 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
   const exemptGoodsScenario = scenarioId === "SN006";
   const zeroRateScenario = scenarioId === "SN007";
   const petroleumScenario = scenarioId === "SN012";
+  const goodsFedStModeScenario = scenarioId === "SN017";
   const rate = exemptGoodsScenario
     ? "Exempt"
     : zeroRateScenario
       ? "0%"
       : petroleumScenario
         ? "1.43%"
+        : goodsFedStModeScenario
+          ? "8%"
       : normalizeRate(item.rate);
   const percentage = percentRateValue(rate);
   const reducedRateSale = isReducedRateSale(item.saleType);
@@ -86,6 +89,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
       ? 0
       : petroleumScenario
         ? toFbrNumber((salesValue * 1.43) / 100)
+        : goodsFedStModeScenario
+          ? toFbrNumber((salesValue * 8) / 100)
       :
     percentage !== null && storedSalesTax === 0 && salesValue > 0
       ? toFbrNumber((salesValue * percentage) / 100)
@@ -104,6 +109,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
       ? salesValue
       : petroleumScenario
         ? toFbrNumber(salesValue + salesTax + extraTax + furtherTax + fedPayable - discount)
+        : goodsFedStModeScenario
+          ? toFbrNumber(salesValue + salesTax + extraTax + furtherTax + fedPayable - discount)
       :
     percentage !== null && storedTotal <= salesValue && calculatedTotal > 0
       ? calculatedTotal
@@ -138,6 +145,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
         ? "Goods at zero-rate"
         : petroleumScenario
           ? "Petroleum Products"
+          : goodsFedStModeScenario
+            ? "Goods (FED in ST Mode)"
         : toFbrString(item.saleType),
     sroItemSerialNo: exemptGoodsScenario
       ? toFbrString(item.sroItemSerialNo) || "80"
