@@ -86,7 +86,7 @@ const buildFbrItemPayload = (item) => {
       ? calculatedTotal
       : storedTotal;
 
-  return {
+  const payload = {
     hsCode: toFbrString(item.hsCode),
     productDescription: toFbrString(item.description),
     rate,
@@ -105,6 +105,12 @@ const buildFbrItemPayload = (item) => {
     saleType: toFbrString(item.saleType),
     sroItemSerialNo: toFbrString(item.sroItemSerialNo),
   };
+
+  if (/reduced rate/i.test(payload.saleType) && payload.extraTax === 0) {
+    delete payload.extraTax;
+  }
+
+  return payload;
 };
 
 const normalizeBuyerRegistrationType = (value) =>
