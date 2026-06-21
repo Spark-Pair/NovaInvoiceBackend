@@ -70,10 +70,13 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
   const salesValue = toFbrNumber(item.salesValue);
   const exemptGoodsScenario = scenarioId === "SN006";
   const zeroRateScenario = scenarioId === "SN007";
+  const petroleumScenario = scenarioId === "SN012";
   const rate = exemptGoodsScenario
     ? "Exempt"
     : zeroRateScenario
       ? "0%"
+      : petroleumScenario
+        ? "1.43%"
       : normalizeRate(item.rate);
   const percentage = percentRateValue(rate);
   const reducedRateSale = isReducedRateSale(item.saleType);
@@ -81,6 +84,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
   const salesTax =
     exemptGoodsScenario || zeroRateScenario
       ? 0
+      : petroleumScenario
+        ? toFbrNumber((salesValue * 1.43) / 100)
       :
     percentage !== null && storedSalesTax === 0 && salesValue > 0
       ? toFbrNumber((salesValue * percentage) / 100)
@@ -97,6 +102,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
   const totalValues =
     exemptGoodsScenario || zeroRateScenario
       ? salesValue
+      : petroleumScenario
+        ? toFbrNumber(salesValue + salesTax + extraTax + furtherTax + fedPayable - discount)
       :
     percentage !== null && storedTotal <= salesValue && calculatedTotal > 0
       ? calculatedTotal
@@ -120,6 +127,8 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
       ? toFbrString(item.sroScheduleNo) || "6th Schd Table I"
       : zeroRateScenario
         ? toFbrString(item.sroScheduleNo) || "327(I)/2008"
+        : petroleumScenario
+          ? toFbrString(item.sroScheduleNo) || "1450(I)/2021"
       : toFbrString(item.sroScheduleNo),
     fedPayable,
     discount,
@@ -127,11 +136,15 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
       ? "Exempt goods"
       : zeroRateScenario
         ? "Goods at zero-rate"
+        : petroleumScenario
+          ? "Petroleum Products"
         : toFbrString(item.saleType),
     sroItemSerialNo: exemptGoodsScenario
       ? toFbrString(item.sroItemSerialNo) || "80"
       : zeroRateScenario
         ? toFbrString(item.sroItemSerialNo) || "1"
+        : petroleumScenario
+          ? toFbrString(item.sroItemSerialNo) || "4"
       : toFbrString(item.sroItemSerialNo),
   };
 
