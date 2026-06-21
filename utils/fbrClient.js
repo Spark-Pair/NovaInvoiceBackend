@@ -59,64 +59,17 @@ const normalizeRate = (value) => {
   return rate;
 };
 
-const percentRateValue = (value) => {
-  const match = normalizeRate(value).match(/^(\d+(?:\.\d+)?)%$/);
-  return match ? Number(match[1]) : null;
-};
-
-const isReducedRateSale = (saleType) => /reduced rate/i.test(toFbrString(saleType));
-
-const buildFbrItemPayload = (item, scenarioId = "") => {
+const buildFbrItemPayload = (item) => {
   const salesValue = toFbrNumber(item.salesValue);
-  const exemptGoodsScenario = scenarioId === "SN006";
-  const zeroRateScenario = scenarioId === "SN007";
-  const petroleumScenario = scenarioId === "SN012";
-  const goodsFedStModeScenario = scenarioId === "SN017";
-  const rate = exemptGoodsScenario
-    ? "Exempt"
-    : zeroRateScenario
-      ? "0%"
-      : petroleumScenario
-        ? "1.43%"
-        : goodsFedStModeScenario
-          ? "8%"
-      : normalizeRate(item.rate);
-  const percentage = percentRateValue(rate);
-  const reducedRateSale = isReducedRateSale(item.saleType);
-  const storedSalesTax = toFbrNumber(item.salesTax);
-  const salesTax =
-    exemptGoodsScenario || zeroRateScenario
-      ? 0
-      : petroleumScenario
-        ? toFbrNumber((salesValue * 1.43) / 100)
-        : goodsFedStModeScenario
-          ? toFbrNumber((salesValue * 8) / 100)
-      :
-    percentage !== null && storedSalesTax === 0 && salesValue > 0
-      ? toFbrNumber((salesValue * percentage) / 100)
-      : storedSalesTax;
+  const rate = normalizeRate(item.rate);
+  const salesTax = toFbrNumber(item.salesTax);
   const extraTax = toFbrNumber(item.extraTax);
-  const fixedValue = toFbrNumber(item.fixedValue);
   const furtherTax = toFbrNumber(item.furtherTax);
   const fedPayable = toFbrNumber(item.federalExciseDuty);
   const discount = toFbrNumber(item.discount);
-  const calculatedTotal = toFbrNumber(
-    salesValue + salesTax + extraTax + furtherTax + fedPayable - discount
-  );
-  const storedTotal = toFbrNumber(item.totalItemValue);
-  const totalValues =
-    exemptGoodsScenario || zeroRateScenario
-      ? salesValue
-      : petroleumScenario
-        ? toFbrNumber(salesValue + salesTax + extraTax + furtherTax + fedPayable - discount)
-        : goodsFedStModeScenario
-          ? toFbrNumber(salesValue + salesTax + extraTax + furtherTax + fedPayable - discount)
-      :
-    percentage !== null && storedTotal <= salesValue && calculatedTotal > 0
-      ? calculatedTotal
-      : storedTotal;
+  const totalValues = toFbrNumber(item.totalItemValue);
 
-  const payload = {
+  return {
     hsCode: toFbrString(item.hsCode),
     productDescription: toFbrString(item.description),
     rate,
@@ -124,44 +77,17 @@ const buildFbrItemPayload = (item, scenarioId = "") => {
     quantity: toFbrNumber(item.quantity),
     totalValues,
     valueSalesExcludingST: salesValue,
-    fixedNotifiedValueOrRetailPrice:
-      reducedRateSale && fixedValue === 0 ? salesValue : fixedValue,
+    fixedNotifiedValueOrRetailPrice: toFbrNumber(item.fixedValue),
     salesTaxApplicable: salesTax,
     salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
-    extraTax: zeroRateScenario ? 0 : extraTax,
+    extraTax,
     furtherTax,
-    sroScheduleNo: exemptGoodsScenario
-      ? toFbrString(item.sroScheduleNo) || "6th Schd Table I"
-      : zeroRateScenario
-        ? toFbrString(item.sroScheduleNo) || "327(I)/2008"
-        : petroleumScenario
-          ? toFbrString(item.sroScheduleNo) || "1450(I)/2021"
-      : toFbrString(item.sroScheduleNo),
+    sroScheduleNo: toFbrString(item.sroScheduleNo),
     fedPayable,
     discount,
-    saleType: exemptGoodsScenario
-      ? "Exempt goods"
-      : zeroRateScenario
-        ? "Goods at zero-rate"
-        : petroleumScenario
-          ? "Petroleum Products"
-          : goodsFedStModeScenario
-            ? "Goods (FED in ST Mode)"
-        : toFbrString(item.saleType),
-    sroItemSerialNo: exemptGoodsScenario
-      ? toFbrString(item.sroItemSerialNo) || "80"
-      : zeroRateScenario
-        ? toFbrString(item.sroItemSerialNo) || "1"
-        : petroleumScenario
-          ? toFbrString(item.sroItemSerialNo) || "4"
-      : toFbrString(item.sroItemSerialNo),
+    saleType: toFbrString(item.saleType),
+    sroItemSerialNo: toFbrString(item.sroItemSerialNo),
   };
-
-  if ((reducedRateSale || exemptGoodsScenario) && payload.extraTax === 0) {
-    payload.extraTax = "";
-  }
-
-  return payload;
 };
 
 const normalizeBuyerRegistrationType = (value) =>
@@ -202,7 +128,6 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
   const buyer = invoice.buyer;
   const scenarioId =
     environment === "sandbox" ? toFbrString(invoice.fbrScenarioId) || "SN001" : "";
-  const isSandboxUnregisteredBuyerScenario = scenarioId === "SN002";
 
   const payload = {
     invoiceType: toFbrString(invoice.documentType),
@@ -211,15 +136,13 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
     sellerBusinessName: toFbrString(seller.businessName),
     sellerProvince: titleCaseProvince(seller.province),
     sellerAddress: toFbrString(seller.fullAddress),
-    buyerNTNCNIC: isSandboxUnregisteredBuyerScenario ? "0000000000000" : toFbrString(taxId(buyer)),
+    buyerNTNCNIC: toFbrString(taxId(buyer)),
     buyerBusinessName: toFbrString(buyer.buyerName),
     buyerProvince: titleCaseProvince(buyer.province),
     buyerAddress: toFbrString(buyer.fullAddress),
-    buyerRegistrationType: isSandboxUnregisteredBuyerScenario
-      ? "Unregistered"
-      : normalizeBuyerRegistrationType(buyer.registrationType),
+    buyerRegistrationType: normalizeBuyerRegistrationType(buyer.registrationType),
     invoiceRefNo: toFbrString(invoice.referenceNumber),
-    items: invoice.items.map((item) => buildFbrItemPayload(item, scenarioId)),
+    items: invoice.items.map(buildFbrItemPayload),
   };
 
   if (environment === "sandbox") {

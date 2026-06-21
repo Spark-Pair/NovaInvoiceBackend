@@ -94,8 +94,14 @@ const sendInvoiceToFbr = async ({ req, res, next, action }) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    if (action === "submit" && invoice.isSent) {
-      return res.status(400).json({ message: "Invoice is already sent to FBR" });
+    if (
+      action === "submit" &&
+      invoice.isSent &&
+      invoice.fbrEnvironment === "production"
+    ) {
+      return res.status(400).json({
+        message: "Invoice is already sent to FBR production",
+      });
     }
 
     const key = getEntityFbrKey(req.entity, environment);

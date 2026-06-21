@@ -188,9 +188,9 @@ export const updateInvoice = async (req, res, next) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    if (existingInvoice.isSent) {
+    if (existingInvoice.isSent && existingInvoice.fbrEnvironment === "production") {
       return res.status(403).json({
-        message: "Invoice already sent to FBR and cannot be edited",
+        message: "Invoice already sent to FBR production and cannot be edited",
       });
     }
 
@@ -214,6 +214,9 @@ export const updateInvoice = async (req, res, next) => {
     );
 
     // 🧾 Create invoice
+    const resetSandboxFbrStatus =
+      existingInvoice.isSent && existingInvoice.fbrEnvironment === "sandbox";
+
     const invoice = await Invoice.findByIdAndUpdate(
       id,
       {
@@ -226,6 +229,17 @@ export const updateInvoice = async (req, res, next) => {
         items: calculatedItems,
         totalValue,
         relatedEntity: entity._id,
+        ...(resetSandboxFbrStatus
+          ? {
+              isSent: false,
+              fbrStatus: "not_sent",
+              fbrEnvironment: null,
+              fbrInvoiceNumber: "",
+              fbrResponse: null,
+              fbrValidatedAt: null,
+              fbrSubmittedAt: null,
+            }
+          : {}),
       },
       { new: true }
     );
