@@ -66,13 +66,17 @@ const percentRateValue = (value) => {
 
 const isReducedRateSale = (saleType) => /reduced rate/i.test(toFbrString(saleType));
 
-const buildFbrItemPayload = (item) => {
+const buildFbrItemPayload = (item, scenarioId = "") => {
   const salesValue = toFbrNumber(item.salesValue);
-  const rate = normalizeRate(item.rate);
+  const exemptGoodsScenario = scenarioId === "SN006";
+  const rate = exemptGoodsScenario ? "Exempt" : normalizeRate(item.rate);
   const percentage = percentRateValue(rate);
   const reducedRateSale = isReducedRateSale(item.saleType);
   const storedSalesTax = toFbrNumber(item.salesTax);
   const salesTax =
+    exemptGoodsScenario
+      ? 0
+      :
     percentage !== null && storedSalesTax === 0 && salesValue > 0
       ? toFbrNumber((salesValue * percentage) / 100)
       : storedSalesTax;
@@ -86,6 +90,9 @@ const buildFbrItemPayload = (item) => {
   );
   const storedTotal = toFbrNumber(item.totalItemValue);
   const totalValues =
+    exemptGoodsScenario
+      ? salesValue
+      :
     percentage !== null && storedTotal <= salesValue && calculatedTotal > 0
       ? calculatedTotal
       : storedTotal;
@@ -104,14 +111,18 @@ const buildFbrItemPayload = (item) => {
     salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
     extraTax,
     furtherTax,
-    sroScheduleNo: toFbrString(item.sroScheduleNo),
+    sroScheduleNo: exemptGoodsScenario
+      ? toFbrString(item.sroScheduleNo) || "6th Schd Table I"
+      : toFbrString(item.sroScheduleNo),
     fedPayable,
     discount,
-    saleType: toFbrString(item.saleType),
-    sroItemSerialNo: toFbrString(item.sroItemSerialNo),
+    saleType: exemptGoodsScenario ? "Exempt goods" : toFbrString(item.saleType),
+    sroItemSerialNo: exemptGoodsScenario
+      ? toFbrString(item.sroItemSerialNo) || "80"
+      : toFbrString(item.sroItemSerialNo),
   };
 
-  if (reducedRateSale && payload.extraTax === 0) {
+  if ((reducedRateSale || exemptGoodsScenario) && payload.extraTax === 0) {
     payload.extraTax = "";
   }
 
@@ -173,7 +184,7 @@ export const buildFbrInvoicePayload = (invoice, environment) => {
       ? "Unregistered"
       : normalizeBuyerRegistrationType(buyer.registrationType),
     invoiceRefNo: toFbrString(invoice.referenceNumber),
-    items: invoice.items.map(buildFbrItemPayload),
+    items: invoice.items.map((item) => buildFbrItemPayload(item, scenarioId)),
   };
 
   if (environment === "sandbox") {
