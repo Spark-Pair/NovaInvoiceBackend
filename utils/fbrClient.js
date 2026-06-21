@@ -64,16 +64,20 @@ const percentRateValue = (value) => {
   return match ? Number(match[1]) : null;
 };
 
+const isReducedRateSale = (saleType) => /reduced rate/i.test(toFbrString(saleType));
+
 const buildFbrItemPayload = (item) => {
   const salesValue = toFbrNumber(item.salesValue);
   const rate = normalizeRate(item.rate);
   const percentage = percentRateValue(rate);
+  const reducedRateSale = isReducedRateSale(item.saleType);
   const storedSalesTax = toFbrNumber(item.salesTax);
   const salesTax =
     percentage !== null && storedSalesTax === 0 && salesValue > 0
       ? toFbrNumber((salesValue * percentage) / 100)
       : storedSalesTax;
   const extraTax = toFbrNumber(item.extraTax);
+  const fixedValue = toFbrNumber(item.fixedValue);
   const furtherTax = toFbrNumber(item.furtherTax);
   const fedPayable = toFbrNumber(item.federalExciseDuty);
   const discount = toFbrNumber(item.discount);
@@ -94,7 +98,8 @@ const buildFbrItemPayload = (item) => {
     quantity: toFbrNumber(item.quantity),
     totalValues,
     valueSalesExcludingST: salesValue,
-    fixedNotifiedValueOrRetailPrice: toFbrNumber(item.fixedValue),
+    fixedNotifiedValueOrRetailPrice:
+      reducedRateSale && fixedValue === 0 ? salesValue : fixedValue,
     salesTaxApplicable: salesTax,
     salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
     extraTax,
@@ -106,8 +111,8 @@ const buildFbrItemPayload = (item) => {
     sroItemSerialNo: toFbrString(item.sroItemSerialNo),
   };
 
-  if (/reduced rate/i.test(payload.saleType) && payload.extraTax === 0) {
-    delete payload.extraTax;
+  if (reducedRateSale && payload.extraTax === 0) {
+    payload.extraTax = "";
   }
 
   return payload;
