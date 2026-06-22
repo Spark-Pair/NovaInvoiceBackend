@@ -80,7 +80,7 @@ const buildFbrItemPayload = (item) => {
     fixedNotifiedValueOrRetailPrice: toFbrNumber(item.fixedValue),
     salesTaxApplicable: salesTax,
     salesTaxWithheldAtSource: toFbrNumber(item.salesTaxWithheld),
-    extraTax,
+    extraTax: extraTax === 0 ? "" : extraTax,
     furtherTax,
     sroScheduleNo: toFbrString(item.sroScheduleNo),
     fedPayable,
